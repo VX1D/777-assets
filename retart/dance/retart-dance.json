@@ -205,66 +205,77 @@
      "view": "side",
      "flip": false,
      "rot": 0,
-     "dx": 2,
-     "dy": 0,
-     "hand": [
-      3,
-      5
-     ]
-    },
-    {
-     "view": "side",
-     "flip": false,
-     "rot": 0,
-     "dx": 4,
-     "dy": 0,
-     "hand": [
-      3,
-      -11
-     ]
-    },
-    {
-     "view": "side",
-     "flip": false,
-     "rot": 0,
-     "dx": 4,
-     "dy": 0,
-     "hand": [
-      3,
-      5
-     ]
-    },
-    {
-     "view": "side",
-     "flip": false,
-     "rot": 0,
-     "dx": 4,
-     "dy": 0,
-     "hand": [
-      3,
-      -11
-     ]
-    },
-    {
-     "view": "side",
-     "flip": true,
-     "rot": 0,
-     "dx": 2,
-     "dy": 0,
-     "hand": [
-      3,
-      5
-     ]
-    },
-    {
-     "view": "side",
-     "flip": true,
-     "rot": 0,
      "dx": 0,
      "dy": 0,
      "hand": [
       3,
+      5
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 6,
+     "dy": 0,
+     "hand": [
+      3,
       -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      3,
+      5
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 6,
+     "dy": 0,
+     "hand": [
+      3,
+      -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      3,
+      5
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      3,
+      -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": -4,
+     "dy": 0,
+     "hand": [
+      3,
+      5
      ]
     },
     {
@@ -275,17 +286,6 @@
      "dy": 0,
      "hand": [
       3,
-      5
-     ]
-    },
-    {
-     "view": "side",
-     "flip": true,
-     "rot": 0,
-     "dx": -4,
-     "dy": 0,
-     "hand": [
-      3,
       -11
      ]
     },
@@ -293,7 +293,7 @@
      "view": "side",
      "flip": true,
      "rot": 0,
-     "dx": -4,
+     "dx": -6,
      "dy": 0,
      "hand": [
       3,
