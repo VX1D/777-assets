@@ -10,7 +10,7 @@
  "note": "anchor = the same world point as the body sheet's (0.5, 0.7); ground row 55 = body row 47",
  "mask": "9 layers stacked vertically, same order/painting as retart/retart-mask (Nu())",
  "draw": "fx-behind -> mask tones -> base -> fx (fx = fixed colours, like -glow layers)",
- "items": "hide worn items while dancing (the body rotates; item sheets have no dance frames)",
+ "items": "worn items: item/<name>-retart[-behind|-glow]-dance sheets (dance_items.py), 160x208 frames, anchor (0.5, 0.6615) = same world point; draw -behind under the body, the rest over it",
  "facing": "front only (dance faces the camera in every direction)",
  "sequences": [
   {
@@ -89,6 +89,767 @@
     90,
     260,
     110
+   ],
+   "poses": [
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": -2,
+     "dy": 0,
+     "hand": [
+      -1,
+      -16
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      0,
+      0
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      0,
+      0
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": -2,
+     "dy": 0,
+     "hand": [
+      -1,
+      -16
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      0
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      3,
+      -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      3,
+      5
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 4,
+     "dy": 0,
+     "hand": [
+      3,
+      -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 4,
+     "dy": 0,
+     "hand": [
+      3,
+      5
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 4,
+     "dy": 0,
+     "hand": [
+      3,
+      -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      3,
+      5
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      3,
+      -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": -2,
+     "dy": 0,
+     "hand": [
+      3,
+      5
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": -4,
+     "dy": 0,
+     "hand": [
+      3,
+      -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": -4,
+     "dy": 0,
+     "hand": [
+      3,
+      5
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": -2,
+     "dy": 0,
+     "hand": [
+      3,
+      -11
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": -2,
+     "dy": 0,
+     "hand": [
+      0,
+      0
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 2,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": -2,
+     "dy": 0,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 0,
+     "dx": 2,
+     "dy": 0,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": -2,
+     "dy": 0,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": -2,
+     "dy": 0,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": -6,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 45,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 90,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 135,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 225,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 270,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 315,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": -8,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 45,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 90,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 135,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      -1,
+      -16
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      -1,
+      -16
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      -1,
+      -16
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 180,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 225,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 270,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 270,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 270,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 315,
+     "dx": 0,
+     "dy": 2,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      0,
+      4
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": -6,
+     "hand": [
+      -1,
+      -16
+     ]
+    },
+    {
+     "view": "side",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": -10,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "back",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": -12,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "side",
+     "flip": true,
+     "rot": 0,
+     "dx": 0,
+     "dy": -10,
+     "hand": [
+      1,
+      -16
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": -6,
+     "hand": [
+      -1,
+      -16
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 4,
+     "hand": [
+      0,
+      -9
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      -1,
+      -16
+     ]
+    },
+    {
+     "view": "front",
+     "flip": false,
+     "rot": 0,
+     "dx": 0,
+     "dy": 0,
+     "hand": [
+      0,
+      0
+     ]
+    }
    ]
   }
  ]
