@@ -76,6 +76,8 @@ const SOUNDS = {
   pop: [.2, .3, t => { tone(t, 170, .12, .22, { to: 120 }); noise(t, .05, .1, { f: 900, q: 2 }); ting(t + .01, 2300, .025, .1); }],
   glass: [.45, .35, t => { tone(t, 110, .06, .14); ting(t, 1450, .07, .4); }],
   ice: [.4, .4, t => clinks(t, 4, .22, .06)],
+  // one piece of ice knocking the glass or another piece
+  clink: [.12, .22, t => clinks(t, 1, 0, .05)],
   garnish: [.1, .2, t => { noise(t, .05, .12, { f: 620 }); tone(t, 300, .05, .05); }],
   // one shake beat: ice hitting tin
   shake: [.18, .38, t => { noise(t, .09, .32, { f: 2600, q: .8 }); clinks(t, 3, .06, .035); tone(t, 220, .05, .1, { type: 'triangle' }); }],

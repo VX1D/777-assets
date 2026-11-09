@@ -114,11 +114,124 @@ export class Liquid {
   }
 }
 
+// ── how the drink moves: it has momentum (looks only, like the Liquid above) ──
+// Swirl: the spoon spins the drink up while Stir is held; let go and it coasts on, slowing as the walls drag on it.
+// A shake beat knocks the surface into a damped rocking (a spring that rings down in about a second).
+const SPIN_UP = .4, SPIN_DOWN = 1.3, SWIRL = 4, SPOON = 11.4, SLOSH_K = 361, SLOSH_C = 6.4;
+export class Swirl {
+  constructor() { this.w = 0; this.ph = 0; this.sp = 0; this.tilt = 0; this.tv = 0; this.wph = 0; this.dir = 1; }
+  step(dt, stirring) {
+    if (stirring) { this.w += (1 - this.w) * (1 - Math.exp(-dt / SPIN_UP)); this.sp += SPOON * dt; }
+    else { this.w *= Math.exp(-dt / SPIN_DOWN); if (this.w < .01) this.w = 0; }
+    this.ph += this.w * SWIRL * dt;
+    if (this.tilt || this.tv) {
+      const n = Math.ceil(dt / .004), h = dt / n;
+      for (let i = 0; i < n; i++) { this.tv += (-SLOSH_K * this.tilt - SLOSH_C * this.tv) * h; this.tilt += this.tv * h; }
+      this.wph += dt * 19;
+      if (Math.abs(this.tilt) < .004 && Math.abs(this.tv) < .08) this.tilt = this.tv = 0;
+    }
+    return this.w > 0 || this.tilt !== 0;
+  }
+  kick() { this.dir = -this.dir; this.tv += 19 * this.dir; }
+  get omega() { return this.w * SWIRL; }                     // the drink's turning speed, rad/s
+  get amp() { return Math.min(1.3, Math.hypot(this.tilt, this.tv / 19)); }
+  // where the spoon is on its circle (x offset, depth), for drawing it and for the ice it pushes
+  spoon() { return { dx: 9 * Math.sin(this.sp), dz: 9 * Math.cos(this.sp), vx: 9 * SPOON * Math.cos(this.sp), vz: -9 * SPOON * Math.sin(this.sp) }; }
+  motion(splash = []) {
+    if (!this.w && !this.tilt && !splash.length) return null;
+    return { stir: this.w ? this.ph : null, spin: this.w, slosh: this.tilt ? { tilt: Math.max(-1.3, Math.min(1.3, this.tilt)), amp: this.amp, phase: this.wph } : null, splash };
+  }
+}
+
+// Ice: every piece is a body in the round glass (x across, y down, z into the glass). It falls in, floats about 9/10
+// under the surface, stacks on its neighbours, is carried round by the swirl, knocked by the spoon and thrown by a
+// shake, and bounces off the walls and the base. A cube falling into the drink splashes the surface.
+const G = 900, ICE_RHO = .9, CALM = 2.5;
+function walls(kind) {
+  const g = S[kind] || S.high, [cx, ry, rrx] = g.rim;
+  if (!g.inn) return null;
+  if (g.inn.includes('Q')) return { cx, top: g.top, bot: g.bot, hw: y => Math.max(7, (rrx - 3) * Math.sqrt(Math.max(0, Math.min(1, (g.bot - y) / (g.bot - ry))))) };
+  const n = g.inn.match(/-?[\d.]+/g).map(Number), [x0, y0, x1, y1] = n;     // left wall: top (x0,y0) → bottom (x1,y1)
+  return { cx, top: g.top, bot: g.bot, hw: y => cx - (x0 + (x1 - x0) * Math.max(0, Math.min(1, (y - y0) / (y1 - y0)))) };
+}
+export class Ice {
+  constructor() { this.key = ''; this.p = []; this.splash = []; this.hit = 0; this.calm = 0; this.lastSurf = null; }
+  set(kind, type) {
+    const key = `${kind}|${type}`; if (key === this.key) return; this.key = key; this.p = []; this.splash = []; this.calm = 0;
+    const g = S[kind] || S.high, wl = walls(kind); this.wl = wl;
+    if (!wl || type === 'none') return;
+    const w = g.rim[2] * 2 - 16, span = g.bot - g.top, r1 = (i, k) => (Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1;
+    const add = (i, sh, s, r, y) => this.p.push({ sh, s, r, x: wl.cx + r1(i, 1) * w * .25, z: r1(i, 2) * w * .2, y, vx: 0, vy: 0, vz: 0, a: r1(i, 3) * 40, va: 0, o: .35 + Math.abs(r1(i, 4)) * .4, inn: false });
+    if (type === 'cubes') { const s = Math.min(22, w * .34); for (let i = 0; i < 5; i++) add(i, 'cube', s, s * .52, g.top - s - i * s * .9); }
+    else if (type === 'crushed') for (let i = 0; i < 40; i++) { const s = 3 + i % 3; add(i, 'chip', s, s * .75, g.top - 6 - (i * 53 % 100) / 100 * span * .5); }
+    else if (type === 'block') { const s = Math.min(w * .62, span * .7); add(0, 'block', s, s * .5, g.top - s); }
+  }
+  kick() {                                   // a shake beat throws the ice about
+    for (const p of this.p) { p.vx += (Math.random() - .5) * 140; p.vz += (Math.random() - .5) * 140; p.vy -= 60 + Math.random() * 120; p.va += (Math.random() - .5) * 600; }
+    this.calm = 0;
+  }
+  // surf: y of the liquid surface at x (null = no liquid) · sw: the Swirl · spoon: { x, z, vx, vz } while stirring
+  step(dt, t, surf, sw, spoon) {
+    this.splash = this.splash.filter(s => t - s.t0 < 1.2);
+    if (!this.p.length) return false;
+    const s0 = surf ? surf(this.wl.cx) : null, driven = sw.w > .01 || sw.tilt || spoon || s0 !== this.lastSurf;
+    this.lastSurf = s0;
+    if (!driven && this.calm > 20) return this.splash.length > 0;
+    const { cx, bot, top, hw } = this.wl, P = this.p, n = Math.ceil(dt / (1 / 240)), h = dt / n, om = sw.omega;
+    let fast = 0;
+    for (let k = 0; k < n; k++) {
+      for (const p of P) {
+        const sy = surf ? surf(p.x) : null, sub = sy == null ? 0 : Math.max(0, Math.min(1, (p.y + p.s / 2 - sy) / p.s));
+        if (sy != null && !p.inn && sub > 0 && p.vy > 60) this.splash.push({ x: p.x, t0: t, a: Math.min(1, p.vy / 400) * Math.min(1, p.s / 14) });
+        p.inn = sub > 0;
+        p.vy += G * (1 - sub / ICE_RHO) * h;
+        // the drink drags the ice along with it: round with the swirl, side to side with the slosh
+        const kd = sub * 7 + .2, dx = p.x - cx, fx = -p.z * om + sw.tv * 3 * sub, fz = dx * om;
+        p.vx += (fx - p.vx) * Math.min(1, kd * h); p.vz += (fz - p.vz) * Math.min(1, kd * h); p.vy -= p.vy * Math.min(1, sub * 4 * h);
+        p.va += ((p.vx * 2.5 + om * 30 * sub) - p.va) * Math.min(1, 3 * h);
+        p.x += p.vx * h; p.y += p.vy * h; p.z += p.vz * h; p.a += p.va * h;
+      }
+      for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {    // pieces push each other apart
+        const a = P[i], b = P[j], dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, d2 = dx * dx + dy * dy + dz * dz, rr = a.r + b.r;
+        if (d2 >= rr * rr || d2 < 1e-6) continue;
+        const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, nz = dz / d, o = (rr - d) / 2;
+        a.x -= nx * o; a.y -= ny * o; a.z -= nz * o; b.x += nx * o; b.y += ny * o; b.z += nz * o;
+        const vn = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny + (b.vz - a.vz) * nz;
+        if (vn < 0) { const j2 = -vn * .6; a.vx -= nx * j2; a.vy -= ny * j2; a.vz -= nz * j2; b.vx += nx * j2; b.vy += ny * j2; b.vz += nz * j2; this.hit = Math.max(this.hit, -vn); }
+      }
+      for (const p of P) {
+        if (spoon) {                                                                  // the spoon shoves what it meets
+          const dx = p.x - spoon.x, dz = p.z - spoon.z, d = Math.hypot(dx, dz), rr = p.r + 2.5;
+          if (d < rr && d > 1e-6) { const nx = dx / d, nz = dz / d; p.x = spoon.x + nx * rr; p.z = spoon.z + nz * rr;
+            const vn = (p.vx - spoon.vx) * nx + (p.vz - spoon.vz) * nz; if (vn < 0) { p.vx -= vn * nx * 1.2; p.vz -= vn * nz * 1.2; this.hit = Math.max(this.hit, -vn * .5); } }
+        }
+        const dx = p.x - cx, d = Math.hypot(dx, p.z), wy = Math.min(bot, p.y + p.r * .6), lim = Math.max(0, hw(wy) - p.r * .85);
+        if (d > lim) {                                    // the glass wall; a bowl's sloping wall also pushes up
+          const sl = (hw(wy + 1) - hw(wy - 1)) / 2, L = Math.hypot(1, sl), nr = 1 / L, ny = -sl / L, pen = (d - lim) * nr;
+          const nx = (d ? dx / d : 1) * nr, nz = (d ? p.z / d : 0) * nr;
+          p.x -= nx * pen; p.z -= nz * pen; p.y -= ny * pen;
+          const vn = p.vx * nx + p.vz * nz + p.vy * ny;
+          if (vn > 0) { p.vx -= 1.35 * vn * nx; p.vz -= 1.35 * vn * nz; p.vy -= 1.35 * vn * ny; this.hit = Math.max(this.hit, vn); }
+          const fr = Math.max(0, 1 - 4 * h); p.vx *= fr; p.vz *= fr; p.vy *= fr; p.va *= fr;   // it rubs on the glass
+        }
+        if (p.y + p.r > bot - .5) { p.y = bot - .5 - p.r; if (p.vy > 0) { this.hit = Math.max(this.hit, p.vy * .7); p.vy *= -.25; p.vx *= .9; p.vz *= .9; } }
+        if (p.y < top - 60 && p.vy < 0) p.vy = 0;
+      }
+    }
+    for (const p of P) fast = Math.max(fast, Math.hypot(p.vx, p.vy, p.vz));
+    this.calm = fast < CALM && !driven ? this.calm + 1 : 0;
+    return true;
+  }
+  takeHit() { const v = this.hit; this.hit = 0; return v; }
+  view() { return this.p.length ? [...this.p].sort((a, b) => b.z - a.z) : null; }
+}
+
 // layers: [{ c:'#hex', v: amount }] bottom→top · fill: 0..1 of the glass · ice: 'none'|'cubes'|'crushed'|'block'
 // gar: garnish sprite url or ''
 // layers: Liquid.view().layers ({ c, v, soft, fizzy }) · sink: a layer falling through the ones below · foam: 0..1 (shaken)
 // motion: { stir: phase while the spoon turns, slosh: { amp 0..1, phase } after a shake beat } — the liquid moves with it
-export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', sink = null, foam = 0, motion = null } = {}) {
+// bodies: Ice.view() — the ice as live bodies (drawn instead of the resting arrangement for `ice`)
+export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', sink = null, foam = 0, motion = null, bodies = null } = {}) {
   const g = S[kind] || S.high, id = `gw${++uid}`;
   const [rx0, ry0, rrx, rry] = g.rim;
   const total = layers.reduce((a, l) => a + l.v, 0);
@@ -154,7 +267,7 @@ export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', 
       out.push(`<ellipse cx="${rx0 - rrx * .25 * k}" cy="${ry0}" rx="${rrx * .22 * k}" ry=".9" fill="#fff" opacity=".45"/>`);
       if (motion?.stir != null) for (let i = 0; i < 2; i++) {
         const a = motion.stir * 2 + i * Math.PI;
-        out.push(`<path d="M${(rx0 + Math.cos(a) * rrx * .5 * k).toFixed(1)} ${(ry0 + .6 + Math.sin(a) * rry * .5 * k).toFixed(1)} A${(rrx * .45 * k).toFixed(1)} ${(rry * .45 * k).toFixed(1)} 0 0 1 ${(rx0 + Math.cos(a + 1.6) * rrx * .5 * k).toFixed(1)} ${(ry0 + .6 + Math.sin(a + 1.6) * rry * .5 * k).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".9"/>`);
+        out.push(`<path d="M${(rx0 + Math.cos(a) * rrx * .5 * k).toFixed(1)} ${(ry0 + .6 + Math.sin(a) * rry * .5 * k).toFixed(1)} A${(rrx * .45 * k).toFixed(1)} ${(rry * .45 * k).toFixed(1)} 0 0 1 ${(rx0 + Math.cos(a + 1.6) * rrx * .5 * k).toFixed(1)} ${(ry0 + .6 + Math.sin(a + 1.6) * rry * .5 * k).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity="${(.45 * (motion.spin ?? 1)).toFixed(2)}" stroke-width=".9"/>`);
       }
       if (foam) out.push(`<ellipse cx="${rx0}" cy="${ry0 + .6}" rx="${(rrx - 4) * k}" ry="${(rry - 1.2) * k}" fill="#fffaf0" opacity="${(.35 * foam).toFixed(2)}"/>`);
     }
@@ -166,13 +279,16 @@ export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', 
     if (total > 0 && fill > 0) {
       const h = (g.bot - g.top) * Math.min(1, fill), sum = shown.reduce((a, l) => a + l.v, 0);
       // each boundary between layers is a curve: flat at rest, a vortex while stirred, tilting and rocking after a shake
-      const st = motion?.stir, sl = motion?.slosh;
+      const st = motion?.stir, sl = motion?.slosh, spin = motion?.spin ?? 1, tilt = sl ? sl.tilt ?? sl.amp * Math.sin(sl.phase) : 0;
       const curve = (y0, depth) => {                          // depth 0 = bottom … 1 = the surface
         const pts = [];
         for (let x = 0; x <= 120; x += 6) {
           let dy = 0, u = (x - rx0) / rrx;
-          if (st != null) dy += (depth > .99 ? 5 * (1 - u * u) : 0) + Math.sin(x * .13 + st * 2 + depth * 3) * 2.2 * (.4 + depth);
-          if (sl) dy += sl.amp * (Math.sin(sl.phase) * u * 9 * (.3 + depth) + Math.sin(x * .2 + sl.phase * 1.7) * 1.6);
+          if (st != null) dy += spin * ((depth > .99 ? 5 * (1 - u * u) : 0) + Math.sin(x * .13 + st * 2 + depth * 3) * 2.2 * (.4 + depth));
+          if (sl) dy += tilt * u * 9 * (.3 + depth) + sl.amp * Math.sin(x * .2 + sl.phase * 1.7) * 1.6;
+          if (depth > .99 && motion?.splash) for (const p of motion.splash) {       // rings running out from where ice fell in
+            const ax = Math.abs(x - p.x); dy += p.a * 3.4 * Math.exp(-p.age * 3) * Math.exp(-ax / 16) * Math.sin(ax * .45 - p.age * 18);
+          }
           pts.push([x, Math.max(g.top - 4, Math.min(g.bot, y0 + dy))]);
         }
         return pts;
@@ -211,12 +327,18 @@ export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', 
       }
       if (st != null) for (let i = 0; i < 3; i++) {             // streaks turning with the spoon
         const yy = surfY + 6 + i * ((g.bot - surfY - 10) / 3), x0 = 30 + ((st * 40 + i * 33) % 60);
-        out.push(`<path d="M${x0.toFixed(1)} ${yy.toFixed(1)} q 9 -3 18 0" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>`);
+        out.push(`<path d="M${x0.toFixed(1)} ${yy.toFixed(1)} q 9 -3 18 0" fill="none" stroke="#fff" stroke-opacity="${(.3 * spin).toFixed(2)}" stroke-width="1"/>`);
       }
       if (foam || layers.some(l => l.fizzy)) for (let i = 0; i < 6; i++)                // bubbles rise in a shaken or fizzy drink
         out.push(`<circle class="gw-bub" style="--d:${(i * .37) % 1.6}s" cx="${44 + (i * 13) % 34}" cy="${g.bot - 4}" r="${.9 + (i % 3) * .35}" fill="#fff" opacity=".55"/>`);
     }
-    if (ice !== 'none') {                                                      // ice sits in the glass, half under the surface
+    if (bodies) for (const p of bodies) {                                      // live ice: nearer pieces lower and a touch bigger
+      const k = 1 - p.z / 160, s = p.s * k, x = p.x - s / 2, y = p.y - p.z * .16 - s / 2, back = p.z > 0 ? .7 : 1, rot = `rotate(${(p.a % 360).toFixed(1)} ${(x + s / 2).toFixed(1)} ${(y + s / 2).toFixed(1)})`;
+      if (p.sh === 'chip') out.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${s.toFixed(1)}" height="${(s * .8).toFixed(1)}" rx="1" transform="${rot}" fill="#fff" opacity="${(p.o * back).toFixed(2)}"/>`);
+      else out.push(`<rect class="gw-ice" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${s.toFixed(1)}" height="${s.toFixed(1)}" rx="${p.sh === 'block' ? 4 : 3.2}" transform="${rot}" fill="#eaf6ff" fill-opacity="${p.sh === 'block' ? .26 : .2}" stroke="#fff" stroke-opacity="${(.72 * back).toFixed(2)}" stroke-width="1.1"/>`
+        + (p.sh === 'block' ? `<path d="M${(x + 5).toFixed(1)} ${(y + 6).toFixed(1)} l${(s * .3).toFixed(1)} 0" transform="${rot}" stroke="#fff" stroke-opacity=".6" stroke-width="1.4"/>` : ''));
+    }
+    else if (ice !== 'none') {                                                 // ice sits in the glass, half under the surface
       const span = g.bot - g.top, x0 = rx0 - rrx + 8, w = rrx * 2 - 16;
       if (ice === 'cubes') for (const [fx, fy, r] of [[.12, .18, -8], [.55, .1, 12], [.3, .45, 6], [.68, .5, -14], [.18, .72, 18]]) {
         const s = Math.min(22, w * .34), x = x0 + fx * (w - s), y = g.bot - (fy * span * .62) - s - 2;
@@ -243,7 +365,7 @@ export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', 
 }
 
 // Where the liquid surface is (viewBox y) for a glass filled to `fill`.
-function surfaceY(kind, fill) { const g = S[kind] || S.high; return g.inn ? Math.max(g.rim[1], g.bot - (g.bot - g.top) * Math.min(1, fill)) : g.rim[1] + 1; }
+export function surfaceY(kind, fill) { const g = S[kind] || S.high; return g.inn ? Math.max(g.rim[1], g.bot - (g.bot - g.top) * Math.min(1, fill)) : g.rim[1] + 1; }
 // The pouring bottle, as its own layer over the glass (so the glass can redraw every frame without restarting this animation):
 // tilted over the rim, mouth just above it, a stream down to the surface. once: a single short pour (House card tap).
 export function pourSVG(kind, { src, c, fill = 0, once = false }) {

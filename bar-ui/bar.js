@@ -3,7 +3,7 @@
 // the glassware drawing in glassware.js; this file owns the Back bar (the client's qQ state machine) and the window.
 // Back bar layout: left = ticket rail, paper order ticket, regulars' talk, your evening (tip jar · row · stars);
 // right = bottle shelf → counter (jigger · glass · shaker, methods, flair) → trays (glasses · ice · garnish) + stock.
-import { glassSVG, pourSVG, setPourLevel, jiggerSVG, setJigger, shakerSVG, spoonSVG, Liquid } from './glassware.js';
+import { glassSVG, pourSVG, setPourLevel, jiggerSVG, setJigger, shakerSVG, spoonSVG, Liquid, Swirl, Ice, surfaceY } from './glassware.js';
 import { pourStart, pourLevel, pourStop, pourDone, stirStart, stirStop, tip } from './sound.js';
 import { GAME, B, DRINKS, BACK, METHOD, TRACK, ART, P, on, emit, $, h, img, now, clamp, fmt, rankInfo, sfx, cardOn, setCardOn } from './state.js';
 
@@ -107,6 +107,7 @@ let lastB = null;
 // What the eye sees (the rules above stay the client's): every let-go is one pour, bottle → jigger → glass.
 // liq = what is in the glass, layer by layer (glassware.js Liquid: mixing, diffusion, sinking); dump = the jigger tipping in.
 const liq = new Liquid();
+const swirl = new Swirl(), cubes = new Ice();     // the drink's momentum, and the ice as bodies in the glass
 let dump = null;
 const DUMP = .5;
 function hold(b) {
@@ -133,6 +134,7 @@ function stirOff() { stirStop(); if (m.k === 'stir' && m.at != null) { m.h = Mat
 function beat() {
   const e = now(); if (m.k !== 'shake') m = { ...blankM(), k: 'shake', first: e, last: e }; m.n++; m.last = e; m.h = m.n > 1 ? (e - m.first) * m.n / (m.n - 1) : 0;
   liq.agitate(1 / SHAKE.need); liq.foam = Math.min(1, liq.foam + 1 / SHAKE.need);   // each beat runs the layers together a step
+  swirl.kick(); cubes.kick();
   sfx('shake'); render();
 }
 let buildAt = -9;
@@ -775,25 +777,39 @@ function paint() {
 // The glass on the counter, live: what is poured so far plus the bottle in the paw, the bottle tilted over the rim while it pours.
 const GLASS_CAP = 4.5;                                   // parts that fill a glass to the brim (recipes are 2–4 parts)
 let glKey = '';
-let lastDraw = 0;
+let lastDraw = 0, lastClink = 0;
+const S_RIM = { high: 28, rocks: 38, coupe: 48, nick: 34, house: 34 };   // rim half-widths (glassware.js), for the slosh tilt
 function drawGlass(el, t) {
   const dt = Math.min(.1, Math.max(0, t - lastDraw)); lastDraw = t;
   const kind = glass || 'tin';
   const tool = el.querySelector('.gw-tool');
   const stirring = m.k === 'stir' && m.at != null;
-  if (tool._on !== stirring) { tool._on = stirring; tool.innerHTML = stirring ? spoonSVG() : ''; el.classList.toggle('stirring', stirring); }
-  if (stirring) liq.agitate(dt / 1.6);                              // about 1.6 s of stirring runs everything in the glass together
+  if (tool._on !== stirring) {                                       // the spoon goes in, and lifts out on let-go
+    tool._on = stirring; el.classList.toggle('stirring', stirring); clearTimeout(tool._out);
+    if (stirring) { tool.classList.remove('out'); tool.innerHTML = spoonSVG(); }
+    else { tool.classList.add('out'); tool._out = setTimeout(() => { if (!tool._on) { tool.innerHTML = ''; tool.classList.remove('out'); } }, 260); }
+  }
+  // the drink keeps its momentum: it spins up under the spoon and coasts on after let-go, mixing as long as it turns
+  const moving = swirl.step(dt, stirring);
+  if (swirl.w) liq.agitate(dt / 1.6 * swirl.w);
+  const sp = swirl.spoon(), turn = tool.querySelector('.sp-turn');
+  if (turn && stirring) turn.setAttribute('transform', `translate(${sp.dx.toFixed(2)} 0) rotate(${(-sp.dx * .45).toFixed(2)} 62 70)`);
   const busy = liq.step(dt, t);
   const dp = dump ? clamp((t - dump.at) / DUMP, 0, 1) : 1;
   const { layers, sink, foam } = liq.view(t, dump && dp < 1 ? { id: dump.id, sub: dump.add * (1 - dp) } : null);
   const fill = Math.min(1, layers.reduce((a, l) => a + l.v, 0) / GLASS_CAP);
-  // the liquid moving: a vortex while the spoon turns, a slosh that dies away after each shake beat
-  const since = t - m.last, slosh = m.k === 'shake' && m.n > 0 && since < 1.1 ? { amp: Math.exp(-since * 3.2), phase: since * 19 } : null;
-  const motion = stirring || slosh ? { stir: stirring ? t * 4 : null, slosh } : null;
-  const key = `${kind}|${ice}|${gar}|${motion || busy || dp < 1 ? t.toFixed(2) : ''}|${layers.map(l => l.c + l.v.toFixed(2) + l.soft.toFixed(2)).join(',')}`;
+  // the ice: falls in, floats, rides the swirl, is knocked by the spoon; the surface it floats on tilts with the slosh
+  cubes.set(kind, ice);
+  const sy = surfaceY(kind, fill), rr = (S_RIM[kind] ?? 30);
+  const surf = fill > 0 ? x => sy + swirl.tilt * (x - 60) / rr * 9 * 1.3 : null;
+  const iceBusy = cubes.step(dt, t, surf, swirl, stirring ? { x: 64 + sp.dx, z: sp.dz, vx: sp.vx, vz: sp.vz } : null);
+  const hit = cubes.takeHit();
+  if (hit > 45 && t - lastClink > .07) { lastClink = t; sfx('clink', { rate: .85 + Math.min(.5, hit / 400) + Math.random() * .2 }); }
+  const motion = swirl.motion(cubes.splash.map(p => ({ x: p.x, a: p.a, age: t - p.t0 })));
+  const key = `${kind}|${ice}|${gar}|${motion || moving || iceBusy || busy || dp < 1 ? t.toFixed(3) : ''}|${layers.map(l => l.c + l.v.toFixed(2) + l.soft.toFixed(2)).join(',')}`;
   if (key === glKey) return; glKey = key;
   el.dataset.g = kind;
-  el.querySelector('.gw-glass').innerHTML = glassSVG(kind, { layers, fill, ice, gar: gar !== 'none' ? ART.gar(gar) : '', sink, foam, motion });
+  el.querySelector('.gw-glass').innerHTML = glassSVG(kind, { layers, fill, ice, gar: gar !== 'none' ? ART.gar(gar) : '', sink, foam, motion, bodies: cubes.view() });
 }
 (function loop() { paint(); requestAnimationFrame(loop); })();
 setInterval(() => { if (P.shift.on) hud(); }, 15000);

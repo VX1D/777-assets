@@ -273,12 +273,10 @@ kbd{font:600 9.5px var(--mono);color:var(--faint)}
 .shk:active{transform:translateY(1px)}
 .shkstage.go .shk{animation:shk-beat .22s ease-out}
 @keyframes shk-beat{0%{transform:none}30%{transform:translate(-2px,-12px) rotate(-12deg)}65%{transform:translate(2px,-8px) rotate(9deg)}100%{transform:none}}
-/* stir: the spoon turns in the glass while held; ice knocks about */
+/* stir: the spoon turns in the glass while held (bar.js drives it, in step with the ice), and lifts out on let-go */
 .gw-tool{pointer-events:none;z-index:1}
-.gw-spoon .sp-turn{transform-box:view-box;transform-origin:62px 70px;animation:sp-turn .5s ease-in-out infinite}
-@keyframes sp-turn{0%,100%{transform:translateX(-9px) rotate(4deg)}50%{transform:translateX(9px) rotate(-4deg)}}
-.gl.stirring .gw-ice{transform-box:fill-box;transform-origin:50% 50%;animation:ice-knock .5s ease-in-out infinite}
-@keyframes ice-knock{50%{transform:translateX(3px) rotate(10deg)}}
+.gw-tool .gw-spoon{transition:transform .25s ease-in,opacity .25s ease-in}
+.gw-tool.out .gw-spoon{transform:translateY(-34px);opacity:0}
 /* build: the glass is set down on the counter */
 .gl.built{animation:gl-set .3s cubic-bezier(.2,1.5,.4,1)}
 @keyframes gl-set{0%{transform:translateY(-10px)}60%{transform:translateY(1px) scaleY(.98)}100%{transform:none}}
