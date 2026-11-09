@@ -380,7 +380,7 @@ export function mountHouseCard(root, { rows = true } = {}) {
   const say = h('p', { class: 'hs-say', 'aria-live': 'polite' });
   const meter = h('div', { class: 'hs-meter', 'aria-label': 'Pour bar' }), good = h('i', { class: 'good' }), perfect = h('i', { class: 'perfect' }), needle = h('b');
   meter.append(good, perfect, needle, stopTick);
-  let lastFx = 0, lastLen = 0, pourAt = 0, mixShown = [], houseKey = null;
+  let lastFx = 0, lastLen = 0, pourAt = 0, shakeAt = 0, mixShown = [], houseKey = null;
   const houseFill = n => Math.min(.9, n * .17);
   // the House glass: one layer per pour, everything before a shake blended into one colour; the newest pour rises while the bottle tips
   function drawHouse() {
@@ -391,9 +391,12 @@ export function mountHouseCard(root, { rows = true } = {}) {
       layers.push({ c: CLUB.bottles[b]?.col ?? '#fff', v: i === mixShown.length - 1 ? p : 1 });
     });
     const n = layers.reduce((a, l) => a + l.v, 0);
-    const key = layers.map(l => l.c + l.v.toFixed(2)).join(',');
+    const ss = shakeAt ? (performance.now() - shakeAt) / 1000 : 9;          // the slosh after a shake dies away in about a second
+    const motion = ss < 1.1 ? { slosh: { amp: Math.exp(-ss * 3.2), phase: ss * 19 } } : null;
+    const shaken = mixShown.includes('shake');
+    const key = layers.map(l => l.c + l.v.toFixed(2)).join(',') + (motion ? ss.toFixed(2) : '') + shaken;
     if (key === houseKey) return; houseKey = key;
-    glassLayer.innerHTML = glassSVG('house', { layers: layers.filter(l => l.v > 0), fill: houseFill(n) });
+    glassLayer.innerHTML = glassSVG('house', { layers: layers.filter(l => l.v > 0), fill: houseFill(n), motion, mix: shaken ? { k: 1, upto: 0, foam: true } : null });
   }
   const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
   const keyBtn = (b, v, i) => button([h('kbd', {}, i + 1), img(ART.bottle(HBOT[b] || 'clear'), v.name), h('span', {}, h('i', { class: 'bdot', style: `--c: ${v.col};` }), v.name)], () => tapHouse(b), { class: 'hs-btl', style: `--c: ${v.col};`, title: `${v.name} [${i + 1}]` });
@@ -462,9 +465,9 @@ export function mountHouseCard(root, { rows = true } = {}) {
       clearTimeout(pourLayer._t); pourLayer._t = setTimeout(() => { pourLayer.innerHTML = ''; }, 520);
     }
     if (T.mix.length > lastLen && last === 'shake') {                       // the shaker on the counter rattles
-      replay(shaker, 'go'); replay(glassArt, 'shaken');
+      replay(shaker, 'go'); replay(glassArt, 'shaken'); shakeAt = performance.now();
     }
-    if (!T.mix.length) { pourLayer.innerHTML = ''; pourAt = 0; }
+    if (!T.mix.length) { pourLayer.innerHTML = ''; pourAt = 0; shakeAt = 0; }
     const frost = T.mix.includes('shake'); if (shaker._f !== frost) { shaker._f = frost; shakerArt.innerHTML = shakerSVG(frost); }
     lastLen = T.mix.length;
     shakeMark.hidden = !T.mix.includes('shake');
@@ -497,7 +500,7 @@ export function mountHouseCard(root, { rows = true } = {}) {
     const o = T.o;
     if (T.busy && performance.now() - T.busy > 3000) { T.busy = 0; render(); }
     needle.style.left = `${o ? zl(since(o)) * 100 : 0}%`;
-    if (pourAt && performance.now() - pourAt < 600) drawHouse();
+    if ((pourAt && performance.now() - pourAt < 600) || (shakeAt && performance.now() - shakeAt < 1200)) drawHouse();
     if (o?.w) setZone(o);
   });
   s.key(e => {

@@ -31,10 +31,24 @@ const mixHex = cols => {                                                   // av
   return '#' + v.map(x => Math.round(x / cols.length).toString(16).padStart(2, '0')).join('');
 };
 export { mixHex };
+const lerpHex = (a, b, k) => {
+  const p = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), x = p(a), y = p(b);
+  return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * k).toString(16).padStart(2, '0')).join('');
+};
+// the layers as they look: the lowest `upto` run together by k (all one colour at 1), later pours sit on top as poured
+function mixed(layers, mix) {
+  if (!mix || !mix.k || !layers.length) return layers;
+  const n = Math.min(mix.upto, layers.length); if (!n) return layers;
+  const low = layers.slice(0, n), avg = mixHex(low.map(l => l.c));
+  if (mix.k >= .98) return [{ c: avg, v: low.reduce((a, l) => a + l.v, 0) }, ...layers.slice(n)];
+  return [...low.map(l => ({ ...l, c: lerpHex(l.c, avg, mix.k) })), ...layers.slice(n)];
+}
 
 // layers: [{ c:'#hex', v: amount }] bottom→top · fill: 0..1 of the glass · ice: 'none'|'cubes'|'crushed'|'block'
-// gar: garnish sprite url or '' · blend: the mix was shaken (one colour)
-export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', blend = false } = {}) {
+// gar: garnish sprite url or ''
+// mix: { k: 0..1 how far the lowest `upto` layers have run together (1 = one colour), upto, foam: shaken } — mixing never undoes
+// motion: { stir: phase while the spoon turns, slosh: { amp 0..1, phase } after a shake beat } — the liquid moves with it
+export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', mix = null, motion = null } = {}) {
   const g = S[kind] || S.high, id = `gw${++uid}`;
   const [rx0, ry0, rrx, rry] = g.rim;
   const total = layers.reduce((a, l) => a + l.v, 0);
@@ -49,16 +63,30 @@ export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', 
   out.push(`<ellipse cx="${rx0}" cy="137.5" rx="${(g.saucer?.[2] ?? rrx) + 2}" ry="3" fill="#000" opacity=".42"/>`);
   if (g.saucer) { const [x, y, a, b] = g.saucer; out.push(`<ellipse cx="${x}" cy="${y}" rx="${a}" ry="${b}" fill="url(#${id}m)"/><ellipse cx="${x}" cy="${y - 1.2}" rx="${a - 10}" ry="${b - 2}" fill="#0002"/>`); }
   const surfY = g.inn ? g.bot - (g.bot - g.top) * Math.min(1, fill) : ry0;
+  const shown = mixed(layers, mix);
   if (g.solid) {
     if (g.handle) out.push(`<path d="${g.handle}" fill="none" stroke="url(#${id}m)" stroke-width="6" stroke-linecap="round"/>`);
     out.push(`<path d="${g.out}" fill="url(#${id}m)"/>`);
     if (g.band) out.push(`<path d="${g.band}" stroke="#ffffff55" stroke-width="1.4"/><path d="${g.band}" transform="translate(0 2)" stroke="#0003" stroke-width="1.2"/>`);
     out.push(`<ellipse cx="${rx0}" cy="${ry0}" rx="${rrx}" ry="${rry}" fill="${g.solid === 'metal' ? '#2a2733' : '#3a3440'}"/>`);
-    if (total > 0) {                                                          // we look down into it: the surface just under the rim
-      const top = blend ? mixHex(layers.map(l => l.c)) : layers[layers.length - 1].c;
+    if (total > 0) {
+      // cold liquid frosts the metal from the outside up to its level, so you can see how full it is
+      if (g.solid === 'metal') {
+        const fy = 137 - (137 - ry0 - 6) * Math.min(1, fill);
+        out.push(`<clipPath id="${id}f"><path d="${g.out}"/></clipPath><g clip-path="url(#${id}f)"><rect x="0" y="${fy.toFixed(1)}" width="120" height="${(140 - fy).toFixed(1)}" fill="#eef6ff" opacity=".28"/>`
+          + Array.from({ length: 26 }, (_, i) => `<circle cx="${28 + (i * 37) % 64}" cy="${(fy + 3 + ((i * 53) % 100) / 100 * (134 - fy)).toFixed(1)}" r="${.6 + (i % 3) * .3}" fill="#fff" opacity=".55"/>`).join('')
+          + `<path d="M24 ${fy.toFixed(1)} L96 ${fy.toFixed(1)}" stroke="#fff" stroke-opacity=".5" stroke-width=".8"/></g>`);
+      }
+      // we look down into it: the surface just under the rim, swirling while it is stirred
+      const top = shown[shown.length - 1].c;
       const k = .55 + .4 * Math.min(1, fill);
       out.push(`<ellipse class="gw-surf" cx="${rx0}" cy="${ry0 + .6}" rx="${(rrx - 3) * k}" ry="${(rry - .9) * k}" fill="${top}"/>`);
       out.push(`<ellipse cx="${rx0 - rrx * .25 * k}" cy="${ry0}" rx="${rrx * .22 * k}" ry=".9" fill="#fff" opacity=".45"/>`);
+      if (motion?.stir != null) for (let i = 0; i < 2; i++) {
+        const a = motion.stir * 2 + i * Math.PI;
+        out.push(`<path d="M${(rx0 + Math.cos(a) * rrx * .5 * k).toFixed(1)} ${(ry0 + .6 + Math.sin(a) * rry * .5 * k).toFixed(1)} A${(rrx * .45 * k).toFixed(1)} ${(rry * .45 * k).toFixed(1)} 0 0 1 ${(rx0 + Math.cos(a + 1.6) * rrx * .5 * k).toFixed(1)} ${(ry0 + .6 + Math.sin(a + 1.6) * rry * .5 * k).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width=".9"/>`);
+      }
+      if (mix?.foam) out.push(`<ellipse cx="${rx0}" cy="${ry0 + .6}" rx="${(rrx - 4) * k}" ry="${(rry - 1.2) * k}" fill="#fffaf0" opacity="${(.35 * mix.k).toFixed(2)}"/>`);
     }
     out.push(`<ellipse cx="${rx0}" cy="${ry0}" rx="${rrx}" ry="${rry}" fill="none" stroke="${g.solid === 'metal' ? '#f2f4fa' : '#fffdf7'}" stroke-width="1.6"/>`);
   } else {
@@ -66,17 +94,44 @@ export function glassSVG(kind, { layers = [], fill = 0, ice = 'none', gar = '', 
     out.push(`<path d="${g.out}${g.stem ? '' : ' Z'}" fill="#dfe6ff" opacity=".045"/>`);
     out.push(`<g clip-path="url(#${id}c)">`);
     if (total > 0 && fill > 0) {
-      const h = (g.bot - g.top) * Math.min(1, fill);
-      let y = g.bot;
-      const col = blend ? [{ c: mixHex(layers.map(l => l.c)), v: total }] : layers;
-      for (const l of col) {
-        const lh = h * l.v / total;
-        out.push(`<rect x="0" y="${(y - lh).toFixed(2)}" width="120" height="${(lh + .6).toFixed(2)}" fill="${l.c}" opacity=".9"/>`);
-        y -= lh;
+      const h = (g.bot - g.top) * Math.min(1, fill), sum = shown.reduce((a, l) => a + l.v, 0);
+      // each boundary between layers is a curve: flat at rest, a vortex while stirred, tilting and rocking after a shake
+      const st = motion?.stir, sl = motion?.slosh;
+      const curve = (y0, depth) => {                          // depth 0 = bottom … 1 = the surface
+        const pts = [];
+        for (let x = 0; x <= 120; x += 6) {
+          let dy = 0, u = (x - rx0) / rrx;
+          if (st != null) dy += (depth > .99 ? 5 * (1 - u * u) : 0) + Math.sin(x * .13 + st * 2 + depth * 3) * 2.2 * (.4 + depth);
+          if (sl) dy += sl.amp * (Math.sin(sl.phase) * u * 9 * (.3 + depth) + Math.sin(x * .2 + sl.phase * 1.7) * 1.6);
+          pts.push([x, Math.max(g.top - 4, Math.min(g.bot, y0 + dy))]);
+        }
+        return pts;
+      };
+      let lower = Array.from({ length: 21 }, (_, i) => [i * 6, g.bot + 2]), y = g.bot;
+      // half-mixed layers bleed into each other: their edges soften as the mix goes on
+      const soft = mix && mix.k > .02 && mix.k < .98 ? (mix.k * 4).toFixed(2) : 0;
+      if (soft) out.push(`<filter id="${id}b" x="-10%" y="-20%" width="120%" height="140%"><feGaussianBlur stdDeviation="0 ${soft}"/></filter><g filter="url(#${id}b)">`);
+      shown.forEach((l, i) => {
+        y -= h * l.v / sum;
+        const upper = curve(y, i === shown.length - 1 ? 1 : (g.bot - y) / (g.bot - g.top));
+        const d = 'M' + upper.map(([x, yy]) => `${x} ${yy.toFixed(1)}`).join(' L') + ' L' + [...lower].reverse().map(([x, yy]) => `${x} ${yy.toFixed(1)}`).join(' L') + ' Z';
+        out.push(`<path d="${d}" fill="${l.c}" opacity=".9"/>`);
+        if (i === shown.length - 1 && soft) out.push('</g>');
+        if (i === shown.length - 1) {                            // the surface: a bright meniscus line along its curve
+          const line = 'M' + upper.map(([x, yy]) => `${x} ${(yy + .2).toFixed(1)}`).join(' L');
+          out.push(`<path class="gw-surf" d="${line}" fill="none" stroke="${l.c}" stroke-width="2.6"/><path d="${line}" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="1"/>`);
+          if (mix?.foam && mix.k > .2) for (let j = 0; j < 14; j++) {   // a shaken drink wears a little foam
+            const [x, yy] = upper[1 + (j * 7) % 19];
+            out.push(`<circle cx="${x + (j % 3) - 1}" cy="${(yy + .8 + (j % 2)).toFixed(1)}" r="${1 + (j % 3) * .5}" fill="#fffaf0" opacity="${(.55 * mix.k).toFixed(2)}"/>`);
+          }
+        }
+        lower = upper;
+      });
+      if (st != null) for (let i = 0; i < 3; i++) {             // streaks turning with the spoon
+        const yy = surfY + 6 + i * ((g.bot - surfY - 10) / 3), x0 = 30 + ((st * 40 + i * 33) % 60);
+        out.push(`<path d="M${x0.toFixed(1)} ${yy.toFixed(1)} q 9 -3 18 0" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1"/>`);
       }
-      const top = col[col.length - 1].c;
-      out.push(`<rect class="gw-surf" x="0" y="${(surfY - .4).toFixed(2)}" width="120" height="2.6" fill="${top}"/><rect x="0" y="${(surfY - .4).toFixed(2)}" width="120" height="1.1" fill="#fff" opacity=".5"/>`);
-      if (blend || layers.some(l => /fizz|soda|tonic/.test(l.k || ''))) for (let i = 0; i < 6; i++)
+      if (mix?.foam || layers.some(l => /fizz|soda|tonic/.test(l.k || ''))) for (let i = 0; i < 6; i++)
         out.push(`<circle class="gw-bub" style="--d:${(i * .37) % 1.6}s" cx="${44 + (i * 13) % 34}" cy="${g.bot - 4}" r="${.9 + (i % 3) * .35}" fill="#fff" opacity=".55"/>`);
     }
     if (ice !== 'none') {                                                      // ice sits in the glass, half under the surface
