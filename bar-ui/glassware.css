@@ -1,0 +1,26 @@
+/* Glassware (glassware.js): see-through glass, open rim, liquid layers, the pouring bottle. Shared by Back bar and House card. */
+.gw{display:block;width:100%;height:100%;overflow:visible}
+.gw image{image-rendering:pixelated}
+.gw-gar{filter:drop-shadow(0 2px 0 #0008)}
+.gw-btl{transform-box:fill-box;transform-origin:50% 50%;transform:rotate(-135deg);filter:drop-shadow(0 3px 0 #0009);animation:gw-tilt .8s ease-in-out infinite alternate}
+@keyframes gw-tilt{from{transform:rotate(-131deg)}to{transform:rotate(-139deg)}}
+.gw-pour{animation:gw-in .16s ease-out}
+@keyframes gw-in{from{opacity:0;transform:translate(10px,-10px)}}
+.gw-stream{filter:drop-shadow(0 0 3px var(--c))}
+.gw-flow{animation:gw-flow .22s linear infinite}
+@keyframes gw-flow{to{stroke-dashoffset:-10}}
+.gw-ripple{transform-box:fill-box;transform-origin:50% 50%;animation:gw-rip .45s ease-out infinite}
+@keyframes gw-rip{from{transform:scale(.5);opacity:1}to{transform:scale(1.9);opacity:0}}
+.gw-bub{animation:gw-bub 1.6s linear infinite;animation-delay:var(--d)}
+@keyframes gw-bub{from{transform:translateY(0);opacity:0}15%{opacity:.6}to{transform:translateY(-46px);opacity:0}}
+/* a single quick pour (House card taps): the bottle comes in, tips, pours, lifts away */
+.gw-pour.once{animation:gw-once .5s ease-in-out forwards}
+.gw-pour.once .gw-btl{animation:gw-tip .5s ease-in-out forwards}
+.gw-pour.once .gw-stream,.gw-pour.once .gw-flow,.gw-pour.once .gw-ripple{animation:gw-st .5s linear forwards}
+.gw-pour.once .gw-flow{animation:gw-st .5s linear forwards,gw-flow .22s linear infinite}
+@keyframes gw-once{0%{opacity:0;transform:translate(12px,-12px)}18%,78%{opacity:1;transform:none}100%{opacity:0;transform:translate(12px,-14px)}}
+@keyframes gw-tip{0%{transform:rotate(-80deg)}22%,74%{transform:rotate(-135deg)}100%{transform:rotate(-90deg)}}
+@keyframes gw-st{0%,20%{opacity:0}26%,70%{opacity:1}78%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.gw *{animation:none!important}}
+.gl > div{position:absolute;inset:0}
+.gw-layer{pointer-events:none;z-index:2}
