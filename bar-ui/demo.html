@@ -858,14 +858,14 @@ kbd{font:600 9.5px var(--mono);color:var(--faint)}
 .counter{display:grid;justify-items:center;align-content:center;gap:10px;padding:6px 18px 8px;position:relative;background:radial-gradient(42% 70% at 50% 65%,#ffffff0c,transparent)}
 .neonbar{display:block;line-height:0}
 .neonbar img{height:28px;image-rendering:pixelated;filter:drop-shadow(0 0 10px #ff3d7fcc);opacity:.92;transition:filter .5s,opacity .5s}
-.stage{position:relative;display:grid;grid-template-columns:auto auto auto;align-items:end;justify-content:center;gap:28px;padding:0 24px}
+.stage{position:relative;display:grid;grid-template-columns:auto auto auto;align-items:start;justify-content:center;gap:28px;padding:0 24px}
 
 /* Both .jwrap and .glasswrap sit on the exact same 112px-high counter surface with a single clean counter line underneath */
 .jigger,.glassstage{display:grid;grid-template-rows:114px auto;justify-items:center;gap:6px}
 .jwrap,.glasswrap{position:relative;display:grid;place-items:end center;width:100%;height:114px;padding:0 18px}
 .stage::before{content:"";position:absolute;left:0;right:0;top:111px;height:2px;background:#ffffff24;box-shadow:0 6px 14px -4px var(--glow)}
-.glassstage{min-width:148px}
-.jigger{position:relative;z-index:2;min-width:96px;transition:opacity .2s}
+.glassstage{width:150px}
+.jigger{position:relative;z-index:2;width:128px;transition:opacity .2s}
 .jigger.idle{opacity:.68}
 
 .gl{position:relative;width:97px;height:113px}
@@ -902,6 +902,12 @@ kbd{font:600 9.5px var(--mono);color:var(--faint)}
 .gl.built{animation:gl-set .3s cubic-bezier(.2,1.5,.4,1)}
 @keyframes gl-set{0%{transform:translateY(-10px)}60%{transform:translateY(1px) scaleY(.98)}100%{transform:none}}
 .gname,.jmeta{font:600 11.5px var(--ui);color:var(--dim);white-space:nowrap}
+/* the labels under the counter never resize it: fixed boxes (glass line wraps to two lines, the jigger's cuts off) */
+.gname,.jmeta{max-width:100%;height:15px;line-height:15px;overflow:hidden}
+.glassstage > .gname{white-space:normal;text-align:center;height:30px;text-wrap:balance}
+.jmeta .jname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jmeta .jdot,.jmeta .jread{flex:none}
+.method .chill[hidden]{display:block!important;visibility:hidden}
 .jread{font:700 12px var(--num);color:var(--ink)}
 
 /* Jigger cup: exact same 100px height & counter baseline as the mixing tin, crisp straight walls */
@@ -1165,6 +1171,8 @@ body{display:flow-root}   /* the window's top margin must not push the page past
   .counter{padding:6px 8px 0}
   .stage{gap:6px;padding:0 4px}
   .jigger,.glassstage,.shkstage{min-width:0}
+  .jigger{width:100px}
+  .glassstage{width:118px}
   .jwrap,.glasswrap{padding:0 6px}
   .gname,.jmeta{font-size:11px}
   .method,.soc-flair{max-width:100%}
