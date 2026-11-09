@@ -2,7 +2,7 @@
 // Every number below is the live client's config (the `Club bar` block and its flair part). Anything the server owns (other cats, tickets, the bag)
 // is SAMPLE and says so in the UI. No hand-holding: nothing marks what to press next; judgement comes after.
 import { GAME, P, DRINKS, BACK, REGULARS, ART, h, img, now, clamp, pick, emit, on, sfx, cardOn } from './state.js';
-import { glassSVG, pourSVG, mixHex, shakerSVG } from './glassware.js';
+import { glassSVG, pourSVG, shakerSVG, Liquid } from './glassware.js';
 import { pourDone, tip } from './sound.js';
 
 /* ───────── real config (client) ───────── */
@@ -380,23 +380,23 @@ export function mountHouseCard(root, { rows = true } = {}) {
   const say = h('p', { class: 'hs-say', 'aria-live': 'polite' });
   const meter = h('div', { class: 'hs-meter', 'aria-label': 'Pour bar' }), good = h('i', { class: 'good' }), perfect = h('i', { class: 'perfect' }), needle = h('b');
   meter.append(good, perfect, needle, stopTick);
-  let lastFx = 0, lastLen = 0, pourAt = 0, shakeAt = 0, mixShown = [], houseKey = null;
+  // the House glass: one layer per tap (the same Liquid as the Back bar: it settles, sinks and diffuses), all of it run together by a shake
+  const hliq = new Liquid();
+  let lastFx = 0, lastLen = 0, pourAt = 0, pourId = 0, shakeAt = 0, houseKey = null, houseBusy = false, lastHouse = 0;
   const houseFill = n => Math.min(.9, n * .17);
   // the House glass: one layer per pour, everything before a shake blended into one colour; the newest pour rises while the bottle tips
   function drawHouse() {
-    const p = pourAt ? clamp((performance.now() - pourAt - 130) / 220, 0, 1) : 1;
-    const layers = [];
-    mixShown.forEach((b, i) => {
-      if (b === 'shake') { if (layers.length) layers.splice(0, layers.length, { c: mixHex(layers.map(l => l.c)), v: layers.reduce((a, l) => a + l.v, 0) }); return; }
-      layers.push({ c: CLUB.bottles[b]?.col ?? '#fff', v: i === mixShown.length - 1 ? p : 1 });
-    });
+    const t = performance.now() / 1000, dt = Math.min(.1, Math.max(0, t - lastHouse)); lastHouse = t;
+    const busy = hliq.step(dt, t);
+    const p = pourAt ? clamp((performance.now() - pourAt - 130) / 220, 0, 1) : 1;       // the newest pour rises while the bottle tips
+    const { layers, sink, foam } = hliq.view(t, p < 1 ? { id: pourId, sub: 1 - p } : null);
     const n = layers.reduce((a, l) => a + l.v, 0);
     const ss = shakeAt ? (performance.now() - shakeAt) / 1000 : 9;          // the slosh after a shake dies away in about a second
     const motion = ss < 1.1 ? { slosh: { amp: Math.exp(-ss * 3.2), phase: ss * 19 } } : null;
-    const shaken = mixShown.includes('shake');
-    const key = layers.map(l => l.c + l.v.toFixed(2)).join(',') + (motion ? ss.toFixed(2) : '') + shaken;
+    houseBusy = busy || !!motion || p < 1;
+    const key = layers.map(l => l.c + l.v.toFixed(2) + l.soft.toFixed(2)).join(',') + (houseBusy ? t.toFixed(2) : '') + foam;
     if (key === houseKey) return; houseKey = key;
-    glassLayer.innerHTML = glassSVG('house', { layers: layers.filter(l => l.v > 0), fill: houseFill(n), motion, mix: shaken ? { k: 1, upto: 0, foam: true } : null });
+    glassLayer.innerHTML = glassSVG('house', { layers, fill: houseFill(n), motion, sink, foam });
   }
   const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
   const keyBtn = (b, v, i) => button([h('kbd', {}, i + 1), img(ART.bottle(HBOT[b] || 'clear'), v.name), h('span', {}, h('i', { class: 'bdot', style: `--c: ${v.col};` }), v.name)], () => tapHouse(b), { class: 'hs-btl', style: `--c: ${v.col};`, title: `${v.name} [${i + 1}]` });
@@ -457,17 +457,16 @@ export function mountHouseCard(root, { rows = true } = {}) {
       if (fx.k === 'pay') replay(floatEl, 'go');
       s.after(.95, render);
     }
-    mixShown = T.mix.length || !fresh ? T.mix : fx.mix;
     const nb = T.mix.filter(b => b !== 'shake').length, last = T.mix[T.mix.length - 1];
     if (T.mix.length > lastLen && last !== 'shake' && nb > 0) {             // a new pour: the bottle comes in over the glass
-      pourAt = performance.now();
+      pourAt = performance.now(); pourId = hliq.pour(last, CLUB.bottles[last]?.col ?? '#fff', 1, pourAt / 1000, last === 'dew').id;
       pourLayer.innerHTML = pourSVG('house', { src: ART.bottle(HBOT[last] || 'clear'), c: CLUB.bottles[last]?.col ?? '#fff', fill: houseFill(nb), once: true });
       clearTimeout(pourLayer._t); pourLayer._t = setTimeout(() => { pourLayer.innerHTML = ''; }, 520);
     }
     if (T.mix.length > lastLen && last === 'shake') {                       // the shaker on the counter rattles
-      replay(shaker, 'go'); replay(glassArt, 'shaken'); shakeAt = performance.now();
+      replay(shaker, 'go'); replay(glassArt, 'shaken'); shakeAt = performance.now(); hliq.agitate(1); hliq.foam = 1;
     }
-    if (!T.mix.length) { pourLayer.innerHTML = ''; pourAt = 0; shakeAt = 0; }
+    if (!T.mix.length) { pourLayer.innerHTML = ''; pourAt = 0; shakeAt = 0; if (!fresh) hliq.clear(); }   // a served drink stays a moment
     const frost = T.mix.includes('shake'); if (shaker._f !== frost) { shaker._f = frost; shakerArt.innerHTML = shakerSVG(frost); }
     lastLen = T.mix.length;
     shakeMark.hidden = !T.mix.includes('shake');
@@ -500,7 +499,7 @@ export function mountHouseCard(root, { rows = true } = {}) {
     const o = T.o;
     if (T.busy && performance.now() - T.busy > 3000) { T.busy = 0; render(); }
     needle.style.left = `${o ? zl(since(o)) * 100 : 0}%`;
-    if ((pourAt && performance.now() - pourAt < 600) || (shakeAt && performance.now() - shakeAt < 1200)) drawHouse();
+    if (houseBusy) drawHouse();
     if (o?.w) setZone(o);
   });
   s.key(e => {
