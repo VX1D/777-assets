@@ -85,7 +85,7 @@ function want(b) {
 }
 const poured = b => wS((parts.find(p => p.b === b)?.h ?? 0) + (held?.b === b ? Math.max(0, now() - held.at) : 0));
 
-function clear() { parts = []; seq = []; dump = null; held = null; lastB = null; use.clear(); m = blankM(); }
+function clear() { parts = []; seq = []; dump = null; mixK = 0; mixUpto = 0; foam = false; held = null; lastB = null; use.clear(); m = blankM(); }
 on('order', x => {
   const was = bo();
   o = x || null;
@@ -107,6 +107,8 @@ let lastB = null;
 // What the eye sees (the rules above stay the client's): every let-go is one pour, bottle → jigger → glass.
 // seq = pours in order (a later pour of the same bottle is a new layer on top); dump = the jigger tipping into the glass.
 let seq = [], dump = null;
+// how far the poured layers have run together (stir or shake; it never un-mixes until the glass is cleared)
+let mixK = 0, mixUpto = 0, foam = false;
 const DUMP = .5;
 function hold(b) {
   if (side !== 'back' || !winOpen) return;
@@ -779,10 +781,18 @@ function drawGlass(el, t) {
   const tool = el.querySelector('.gw-tool');
   const stirring = m.k === 'stir' && m.at != null;
   if (tool._on !== stirring) { tool._on = stirring; tool.innerHTML = stirring ? spoonSVG() : ''; el.classList.toggle('stirring', stirring); }
-  const key = `${kind}|${ice}|${gar}|${m.k === 'shake' && m.n > 0}|${layers.map(l => l.c + l.v.toFixed(2)).join(',')}`;
+  // stirring and shaking run the layers together as they go: about 1.6 s of stir, or the shake count the drink wants
+  const stirSecs = m.k === 'stir' ? m.h + (m.at != null ? t - m.at : 0) : 0;
+  const prog = m.k === 'stir' ? Math.min(1, stirSecs / 1.6) : m.k === 'shake' ? Math.min(1, m.n / SHAKE.need) : 0;
+  if (prog > 0 && seq.length) { mixUpto = Math.max(mixUpto, seq.length); mixK = Math.max(mixK, prog); if (m.k === 'shake') foam = true; }
+  // the liquid moving: a vortex while the spoon turns, a slosh that dies away after each shake beat
+  const since = t - m.last, slosh = m.k === 'shake' && m.n > 0 && since < 1.1 ? { amp: Math.exp(-since * 3.2), phase: since * 19 } : null;
+  const motion = stirring || slosh ? { stir: stirring ? t * 4 : null, slosh } : null;
+  const mix = mixK ? { k: mixK, upto: mixUpto, foam } : null;
+  const key = `${kind}|${ice}|${gar}|${mixK.toFixed(2)}|${mixUpto}|${foam}|${motion ? t.toFixed(2) : ''}|${layers.map(l => l.c + l.v.toFixed(2)).join(',')}`;
   if (key === glKey) return; glKey = key;
   el.dataset.g = kind;
-  el.querySelector('.gw-glass').innerHTML = glassSVG(kind, { layers, fill, ice, gar: gar !== 'none' ? ART.gar(gar) : '', blend: m.k === 'shake' && m.n > 0 });
+  el.querySelector('.gw-glass').innerHTML = glassSVG(kind, { layers, fill, ice, gar: gar !== 'none' ? ART.gar(gar) : '', mix, motion });
 }
 (function loop() { paint(); requestAnimationFrame(loop); })();
 setInterval(() => { if (P.shift.on) hud(); }, 15000);
