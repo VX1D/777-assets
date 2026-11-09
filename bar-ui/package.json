@@ -1,0 +1,11 @@
+{
+  "name": "cyberia-bar-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "demo": "node build-demo.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0"
+  }
+}
